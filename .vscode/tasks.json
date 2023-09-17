@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "gdbserver",
+            "detail": "gdbserver",
+            "type": "shell",
+            "isBackground": true,
+            "command": "${workspaceFolder}/.vscode/gdbserver.sh",
+            "presentation": {
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
+            "label": "download",
+            "detail": "download",
+            "type": "shell",
+            "isBackground": false,
+            "command": "${workspaceFolder}/.vscode/download.sh",
+            "presentation": {
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

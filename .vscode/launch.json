@@ -1,0 +1,36 @@
+{
+    // 使用 IntelliSense 了解相关属性。
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "192.168.1.123:2331 (gdb) 启动",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/jlink/bin/jlink",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/home/zhangjinke/works/mas/v831/v831_tools/arm-openwrt-linux-gnueabi-6.4.1-2017.11/bin/arm-openwrt-linux-gnueabi-gdb",
+            "miDebuggerArgs": "",
+            "miDebuggerServerAddress": "192.168.1.123:2331",
+            "preLaunchTask": "gdbserver",
+            "logging": {
+                "moduleLoad": false,
+                "engineLogging": false,
+                "trace": false
+            },
+            "setupCommands": [
+                {
+                    "description": "为 gdb 启用整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

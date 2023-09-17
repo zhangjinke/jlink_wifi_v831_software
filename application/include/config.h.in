@@ -1,0 +1,33 @@
+/**
+ * \file
+ * \brief 配置头文件
+ *
+ * \internal
+ * \par Modification history
+ * - 1.00 22-06-15  zjk, first implementation
+ * \endinternal
+ */
+
+#ifndef __CONFIG_H
+#define __CONFIG_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define VERSION_MAJOR  ${PROJECT_VERSION_MAJOR}
+#define VERSION_MINOR  ${PROJECT_VERSION_MINOR}
+#define VERSION_PATCH  ${PROJECT_VERSION_PATCH}
+#define VERSION        "${PROJECT_VERSION}"
+
+#define CFG_PATH0     "../etc/jlink0.cfg"
+#define CFG_PATH1     "../etc/jlink1.cfg"
+#define CFG_DEV_NAME  "J-Link OB-STM32F072 WiFi V831"
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif //__CONFIG_H
+
+/* end of file */
