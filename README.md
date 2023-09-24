@@ -1,3 +1,6 @@
+# 简介
+* 长按KEY键在USB、WiFi STA、WiFi AP三种模式循环切换；
+* 长按POWER键开机及关机；
 # 编译方法
 ## 导出工具链
     . ./export_toolchain.sh
