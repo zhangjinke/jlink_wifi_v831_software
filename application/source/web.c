@@ -40,6 +40,8 @@
   宏定义
 *******************************************************************************/
 
+#define __CLIENT_NUM_MAX 8 //最大客户端数量
+
 /*******************************************************************************
   本地全局变量声明
 *******************************************************************************/
@@ -100,9 +102,9 @@ struct http_resp
 //HTTP 服务器结构体
 struct http_server
 {
-  int                sfd;    //socket 文件描述符
-  struct http_client client; //HTTP 客户端
-  struct http_req    req;    //HTTP 请求
+  int                sfd;                      //socket 文件描述符
+  struct http_client client[__CLIENT_NUM_MAX]; //HTTP 客户端
+  struct http_req    req[__CLIENT_NUM_MAX];    //HTTP 请求
 };
 
 /*******************************************************************************
@@ -139,6 +141,46 @@ static struct http_server __g_http_server = {0};
 static int __cfg_read (void)
 {
   return 0;
+}
+
+/**
+ * \brief 空闲客户端索引获取
+ */
+static int __client_free_idx_get (struct http_server *p_http_server)
+{
+  uint32_t i;
+  int      idx = -1;
+
+  for (i = 0; i < __CLIENT_NUM_MAX; i++)
+  {
+    if (p_http_server->client[i].cfd <= 0)
+    {
+      idx = i;
+      break;
+    }
+  }
+
+  return idx;
+}
+
+/**
+ * \brief 客户端索引获取
+ */
+static int __client_idx_get (struct http_server *p_http_server, int cfd)
+{
+  uint32_t i;
+  int      idx = -1;
+
+  for (i = 0; i < __CLIENT_NUM_MAX; i++)
+  {
+    if ((p_http_server->client[i].cfd > 0) && (p_http_server->client[i].cfd == cfd))
+    {
+      idx = i;
+      break;
+    }
+  }
+
+  return idx;
 }
 
 /**
@@ -186,7 +228,7 @@ err:
 /**
  * \brief HTTP 应答
  */
-static int __http_write (struct http_server *p_http_server, const void *p_buf, size_t buf_size)
+static int __http_write (struct http_server *p_http_server, int client_idx, const void *p_buf, size_t buf_size)
 {
   const char *p_char = p_buf;
   ssize_t     nwrite = 0;
@@ -196,7 +238,7 @@ static int __http_write (struct http_server *p_http_server, const void *p_buf, s
   left = buf_size;
   while (left > 0)
   {
-    nwrite = write(p_http_server->client.cfd, p_char + idx, left);
+    nwrite = write(p_http_server->client[client_idx].cfd, p_char + idx, left);
     if (nwrite <= 0)
     {
       if (errno != EAGAIN)
@@ -253,6 +295,7 @@ static int http_resp_package (struct http_resp *p_resp, char *p_buf, int len)
  */
 static int __http_reply (struct http_server *p_http_server,
                          struct http_resp   *p_resp,
+                         int                 client_idx,
                          int                 status_code,
                          const char         *p_status_message,
                          const char         *p_content_type,
@@ -261,7 +304,7 @@ static int __http_reply (struct http_server *p_http_server,
 {
   char             buf[4096] = {0};
   int              len       = 0;
-  struct http_req *p_req     = &p_http_server->req;
+  struct http_req *p_req     = &p_http_server->req[client_idx];
   int              err       = 0;
 
   p_resp->major_version    = p_req->major_version;
@@ -280,10 +323,10 @@ static int __http_reply (struct http_server *p_http_server,
   }
 
   len = http_resp_package(p_resp, buf, sizeof(buf));
-  err = __http_write(p_http_server, buf, len);
+  err = __http_write(p_http_server, client_idx, buf, len);
   if ((0 == err) && (p_content != NULL) && (p_resp->content_length > 0))
   {
-    err = __http_write(p_http_server, p_content, p_resp->content_length);
+    err = __http_write(p_http_server, client_idx, p_content, p_resp->content_length);
   }
 
   return err;
@@ -292,7 +335,7 @@ static int __http_reply (struct http_server *p_http_server,
 /**
  * \brief 文件发送
  */
-static void __file_send (struct http_server *p_http_server, const char *p_path)
+static void __file_send (struct http_server *p_http_server, int client_idx, const char *p_path)
 {
   int              size           = 0;
   char            *p_buf          = 0;
@@ -337,7 +380,7 @@ static void __file_send (struct http_server *p_http_server, const char *p_path)
     }
   }
 
-  __http_reply(p_http_server, &resp, 200, "OK", p_type, p_buf, size);
+  __http_reply(p_http_server, &resp, client_idx, 200, "OK", p_type, p_buf, size);
 
 err_free:
   free(p_buf);
@@ -348,7 +391,7 @@ err:
 /**
  * \brief 登录页面发送
  */
-static void __http_login_send (struct http_server *p_http_server, const char *p_info)
+static void __http_login_send (struct http_server *p_http_server, int client_idx, const char *p_info)
 {
   int              size            = 0;
   char            *p_buf           = 0;
@@ -422,7 +465,7 @@ static void __http_login_send (struct http_server *p_http_server, const char *p_
   size += sprintf(p_buf + size, "<script>document.getElementById('system_info').innerHTML='%s';</script>", buf);
   size += sprintf(p_buf + size, "<script>document.getElementById('version').innerHTML='%s %s';</script>", CFG_DEV_NAME, VERSION);
   size += sprintf(p_buf + size, "<script>document.getElementById('info').innerHTML='%s';</script>", (p_info == NULL) ? "" : p_info);
-  __http_reply(p_http_server, &resp, 200, "OK", "text/html", p_buf, size);
+  __http_reply(p_http_server, &resp, client_idx, 200, "OK", "text/html", p_buf, size);
 
 err_free:
   free(p_buf);
@@ -433,7 +476,7 @@ err:
 /**
  * \brief 配置页面 1 发送
  */
-static void __http_config1_send (struct http_server *p_http_server, const char *p_info)
+static void __http_config1_send (struct http_server *p_http_server, int client_idx, const char *p_info)
 {
   int              size             = 0;
   char            *p_buf            = 0;
@@ -473,7 +516,7 @@ static void __http_config1_send (struct http_server *p_http_server, const char *
   size += sprintf(p_buf + size, "<script>setform.T0.value='%s';</script>", sta_ssid);
   size += sprintf(p_buf + size, "<script>setform.T1.value='%s';</script>", sta_password);
   size += sprintf(p_buf + size, "<script>document.getElementById('info').innerHTML='%s';</script>", (p_info == NULL) ? "" : p_info);
-  __http_reply(p_http_server, &resp, 200, "OK", "text/html", p_buf, size);
+  __http_reply(p_http_server, &resp, client_idx, 200, "OK", "text/html", p_buf, size);
 
 err_free:
   free(p_buf);
@@ -484,7 +527,7 @@ err:
 /**
  * \brief MAC 地址设置页面发送
  */
-static void __http_mac_set_send (struct http_server *p_http_server, const char *p_info)
+static void __http_mac_set_send (struct http_server *p_http_server, int client_idx, const char *p_info)
 {
   int              size        = 0;
   char            *p_buf       = 0;
@@ -518,7 +561,7 @@ static void __http_mac_set_send (struct http_server *p_http_server, const char *
                   "<script>document.getElementById('macaddrset').innerHTML='%02X-%02X-%02X-%02X-%02X-%02X';</script>",
                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   size += sprintf(p_buf + size, "<script>document.getElementById('info').innerHTML='%s';</script>", (p_info == NULL) ? "" : p_info);
-  __http_reply(p_http_server, &resp, 200, "OK", "text/html", p_buf, size);
+  __http_reply(p_http_server, &resp, client_idx, 200, "OK", "text/html", p_buf, size);
 
 err_free:
   free(p_buf);
@@ -529,7 +572,7 @@ err:
 /**
  * \brief 请求处理
  */
-static void __req_process (struct http_server *p_http_server)
+static void __req_process (struct http_server *p_http_server, int client_idx)
 {
   char             cmd[128]        = {0};
   char            *p_cur           = NULL;
@@ -537,13 +580,13 @@ static void __req_process (struct http_server *p_http_server)
   const char      *p_info          = NULL;
   static bool      s_password_pass = false;
   static uint32_t  s_password_tick = 0;
-  struct http_req *p_req           = &p_http_server->req;
+  struct http_req *p_req           = &p_http_server->req[client_idx];
   struct http_resp resp            = {0};
   uint32_t         systick         = systick_get();
   uint8_t          mac[6]          = {0};
   int              err             = 0;
 
-  p_http_server->client.close_req = true;
+  p_http_server->client[client_idx].close_req = true;
   memset(&resp, 0, sizeof(resp));
 
   if (strcmp(p_req->method, "GET") == 0)
@@ -551,24 +594,24 @@ static void __req_process (struct http_server *p_http_server)
     if ((strcmp(p_req->path, "/") == 0))
     { //重定位到登录页面
       resp.p_location = "/login.html";
-      __http_reply(p_http_server, &resp, 302, "Found", "text/html", NULL, 0);
+      __http_reply(p_http_server, &resp, client_idx, 302, "Found", "text/html", NULL, 0);
     }
     else if (strcmp(p_req->path, "/login.html") == 0)
     { //登录页面
-      __http_login_send(p_http_server, NULL);
+      __http_login_send(p_http_server, client_idx, NULL);
     }
     else if ((strcmp(p_req->path, "/m") == 0))
     { //重定位到 MAC 地址设置页面
       resp.p_location = "/m.html";
-      __http_reply(p_http_server, &resp, 302, "Found", "text/html", NULL, 0);
+      __http_reply(p_http_server, &resp, client_idx, 302, "Found", "text/html", NULL, 0);
     }
     else if (strcmp(p_req->path, "/m.html") == 0)
     { //MAC 地址设置页面
-      __http_mac_set_send(p_http_server, NULL);
+      __http_mac_set_send(p_http_server, client_idx, NULL);
     }
     else if (strcmp(p_req->path, "/logo.gif") == 0)
     { //logo 文件
-      __file_send(p_http_server, "logo.gif");
+      __file_send(p_http_server, client_idx, "logo.gif");
     }
   }
   else if (strcmp(p_req->method, "POST") == 0)
@@ -584,13 +627,13 @@ static void __req_process (struct http_server *p_http_server)
       p_cur = str_get(&p_str, p_cur, "pwd=", "&");
       if ((NULL == p_str) || (strcmp(p_str, "12345678") != 0))
       {
-        __http_login_send(p_http_server, "您输入的密码错误!");
+        __http_login_send(p_http_server, client_idx, "您输入的密码错误!");
       }
       else
       { //密码正确
         s_password_pass = true;
         s_password_tick = systick;
-        __http_config1_send(p_http_server, NULL);
+        __http_config1_send(p_http_server, client_idx, NULL);
       }
     }
     else if (strcmp(p_req->path, "/save1.html") == 0)
@@ -598,7 +641,7 @@ static void __req_process (struct http_server *p_http_server)
       if (!s_password_pass)
       { //密码校验未通过
         resp.p_location = "/login.html";
-        __http_reply(p_http_server, &resp, 302, "Found", "text/html", NULL, 0);
+        __http_reply(p_http_server, &resp, client_idx, 302, "Found", "text/html", NULL, 0);
       }
       else
       { //密码校验通过
@@ -619,7 +662,7 @@ static void __req_process (struct http_server *p_http_server)
         }
 
         p_info = "保存成功";
-        __http_config1_send(p_http_server, p_info);
+        __http_config1_send(p_http_server, client_idx, p_info);
         wifi_ctl_cfg_update();
       }
     }
@@ -640,14 +683,14 @@ static void __req_process (struct http_server *p_http_server)
 
       if (-1 == err)
       {
-        __http_mac_set_send(p_http_server, "您输入的MAC地址错误!");
+        __http_mac_set_send(p_http_server, client_idx, "您输入的MAC地址错误!");
       }
       else
       {
         snprintf(cmd, sizeof(cmd), "echo \"%02x:%02x:%02x:%02x:%02x:%02x\" >/etc/wifi/xr_wifi.conf",
                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
         system(cmd);
-        __http_mac_set_send(p_http_server, "修改MAC地址成功!");
+        __http_mac_set_send(p_http_server, client_idx, "修改MAC地址成功!");
         zlog_info(__gp_zlogc,
                   "web set mac: %02x:%02x:%02x:%02x:%02x:%02x ",
                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -665,12 +708,12 @@ static void __req_process (struct http_server *p_http_server)
 /**
  * \brief 接收状态机
  */
-static void __recv_state_machine (struct http_server *p_http_server)
+static void __recv_state_machine (struct http_server *p_http_server, int client_idx)
 {
   int                 ret      = 0;
   size_t              size     = 0;
-  struct http_client *p_client = &p_http_server->client;
-  struct http_req    *p_req    = &p_http_server->req;
+  struct http_client *p_client = &p_http_server->client[client_idx];
+  struct http_req    *p_req    = &p_http_server->req[client_idx];
 
   switch (p_req->http_state)
   {
@@ -682,7 +725,7 @@ static void __recv_state_machine (struct http_server *p_http_server)
       if (ret != 4)
       {
         zlog_error(__gp_zlogc, "method error: %s", (char *)p_client->recv_buf);
-        p_http_server->client.close_req = true;
+        p_client->close_req = true;
         break;
       }
 
@@ -703,7 +746,7 @@ static void __recv_state_machine (struct http_server *p_http_server)
         if (0 == p_req->content_length)
         {
           //HTTP 请求完成
-          __req_process(p_http_server);
+          __req_process(p_http_server, client_idx);
           memset(p_req, 0, sizeof(*p_req));
           p_req->http_state = HTTP_STATE_WAIT_METHOD;
           break;
@@ -727,7 +770,7 @@ static void __recv_state_machine (struct http_server *p_http_server)
         p_req->content_num = p_req->content_length;
 
         //HTTP 请求完成
-        __req_process(p_http_server);
+        __req_process(p_http_server, client_idx);
         memset(p_req, 0, sizeof(*p_req));
         p_req->http_state = HTTP_STATE_WAIT_METHOD;
         break;
@@ -742,7 +785,7 @@ static void __recv_state_machine (struct http_server *p_http_server)
 
     default:
     {
-      p_http_server->client.close_req = true;
+      p_client->close_req = true;
     }
     break;
   }
@@ -751,38 +794,38 @@ static void __recv_state_machine (struct http_server *p_http_server)
 /**
  * \brief 接收处理
  */
-static void __recv_process (struct http_server *p_http_server, uint8_t *p_buf, size_t len)
+static void __recv_process (struct http_server *p_http_server, int client_idx, uint8_t *p_buf, size_t len)
 {
   size_t i   = 0;
   size_t num = 0;
 
-  if (p_http_server->req.http_state != HTTP_STATE_RECV_BODY)
+  if (p_http_server->req[client_idx].http_state != HTTP_STATE_RECV_BODY)
   { //接收 HTTP 头，根据 \r\n 处理
     for (i = 0; i < len; i++)
     {
-      p_http_server->client.recv_buf[p_http_server->client.recv_num++] = p_buf[i];
-      if ((p_http_server->client.recv_num >= 2) &&
-          ('\r' == p_http_server->client.recv_buf[p_http_server->client.recv_num - 2]) &&
-          ('\n' == p_http_server->client.recv_buf[p_http_server->client.recv_num - 1]))
+      p_http_server->client[client_idx].recv_buf[p_http_server->client[client_idx].recv_num++] = p_buf[i];
+      if ((p_http_server->client[client_idx].recv_num >= 2) &&
+          ('\r' == p_http_server->client[client_idx].recv_buf[p_http_server->client[client_idx].recv_num - 2]) &&
+          ('\n' == p_http_server->client[client_idx].recv_buf[p_http_server->client[client_idx].recv_num - 1]))
       { //完成一行接收
-        if (2 == p_http_server->client.recv_num)
+        if (2 == p_http_server->client[client_idx].recv_num)
         {
-          p_http_server->client.recv_buf[p_http_server->client.recv_num] = '\0';
+          p_http_server->client[client_idx].recv_buf[p_http_server->client[client_idx].recv_num] = '\0';
         }
         else
         {
-          p_http_server->client.recv_buf[p_http_server->client.recv_num - 2] = '\0';
-          p_http_server->client.recv_num -= 2;
+          p_http_server->client[client_idx].recv_buf[p_http_server->client[client_idx].recv_num - 2] = '\0';
+          p_http_server->client[client_idx].recv_num -= 2;
         }
-        __recv_state_machine(p_http_server);
-        p_http_server->client.recv_num = 0;
-        if (HTTP_STATE_RECV_BODY == p_http_server->req.http_state)
+        __recv_state_machine(p_http_server, client_idx);
+        p_http_server->client[client_idx].recv_num = 0;
+        if (HTTP_STATE_RECV_BODY == p_http_server->req[client_idx].http_state)
         {
           i++;
           break;
         }
       }
-      else if (p_http_server->client.recv_num >= (sizeof(p_http_server->client.recv_buf) - 1))
+      else if (p_http_server->client[client_idx].recv_num >= (sizeof(p_http_server->client[client_idx].recv_buf) - 1))
       {
         zlog_warn(__gp_zlogc, "recv buf full");
         break;
@@ -790,23 +833,23 @@ static void __recv_process (struct http_server *p_http_server, uint8_t *p_buf, s
     }
   }
 
-  while ((HTTP_STATE_RECV_BODY == p_http_server->req.http_state) && (i < len))
+  while ((HTTP_STATE_RECV_BODY == p_http_server->req[client_idx].http_state) && (i < len))
   {
-    if ((len - i) > (sizeof(p_http_server->client.recv_buf) - p_http_server->client.recv_num))
+    if ((len - i) > (sizeof(p_http_server->client[client_idx].recv_buf) - p_http_server->client[client_idx].recv_num))
     {
-      num = sizeof(p_http_server->client.recv_buf) - p_http_server->client.recv_num;
+      num = sizeof(p_http_server->client[client_idx].recv_buf) - p_http_server->client[client_idx].recv_num;
     }
     else
     {
       num = len - i;
     }
-    memcpy(&p_http_server->client.recv_buf[p_http_server->client.recv_num],
+    memcpy(&p_http_server->client[client_idx].recv_buf[p_http_server->client[client_idx].recv_num],
            &p_buf[i],
             num);
-    p_http_server->client.recv_num += num;
+    p_http_server->client[client_idx].recv_num += num;
     i -= num;
-    __recv_state_machine(p_http_server);
-    p_http_server->client.recv_num = 0;
+    __recv_state_machine(p_http_server, client_idx);
+    p_http_server->client[client_idx].recv_num = 0;
   }
 }
 
@@ -815,6 +858,7 @@ static void __recv_process (struct http_server *p_http_server, uint8_t *p_buf, s
  */
 static void __web_process (int epoll_fd, struct epoll_event *p_ev)
 {
+  int                   client_idx   = 0;
   int                   cfd          = 0;
   struct sockaddr_in    caddr        = {0};
   socklen_t             socklen      = 0;
@@ -888,55 +932,61 @@ static void __web_process (int epoll_fd, struct epoll_event *p_ev)
           break;
         }
 
-        if (__g_http_server.client.cfd > 0)
+        client_idx = __client_free_idx_get(&__g_http_server);
+        if (-1 == client_idx)
         {
-          zlog_error(__gp_zlogc, "accept socket error: busy, current socket %d", __g_http_server.client.cfd);
+          zlog_error(__gp_zlogc, "accept socket error: client full");
           close(cfd);
           break;
         }
-        memset(&__g_http_server.client, 0, sizeof(__g_http_server.client));
-        memset(&__g_http_server.req, 0, sizeof(__g_http_server.req));
-        __g_http_server.client.cfd = cfd;
-        __g_http_server.client.caddr = caddr;
+        memset(&__g_http_server.client[client_idx], 0, sizeof(__g_http_server.client[client_idx]));
+        memset(&__g_http_server.req[client_idx], 0, sizeof(__g_http_server.req[client_idx]));
+        __g_http_server.client[client_idx].cfd = cfd;
+        __g_http_server.client[client_idx].caddr = caddr;
 
         // 添加 client 到 epoll
         ev.events = EPOLLIN;
-        ev.data.fd = __g_http_server.client.cfd;
-        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, __g_http_server.client.cfd, &ev) == -1)
+        ev.data.fd = __g_http_server.client[client_idx].cfd;
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, __g_http_server.client[client_idx].cfd, &ev) == -1)
         {
           zlog_error(__gp_zlogc, "epoll_ctl add error: %s", strerror(errno));
-          close(__g_http_server.client.cfd);
-          __g_http_server.client.cfd = 0;
+          close(__g_http_server.client[client_idx].cfd);
+          __g_http_server.client[client_idx].cfd = 0;
           break;
         }
 
-        zlog_info(__gp_zlogc, "accept socket %d addr: %s port: %u", cfd, inet_ntoa(caddr.sin_addr), ntohs(caddr.sin_port));
+        zlog_info(__gp_zlogc, "accept socket %d addr: %s port: %u client_idx: %d",
+                              cfd, inet_ntoa(caddr.sin_addr), ntohs(caddr.sin_port), client_idx);
       }
-      else if (p_ev->data.fd == __g_http_server.client.cfd)
+      else if ((client_idx = __client_idx_get(&__g_http_server, p_ev->data.fd)) >= 0)
       {
-        nread = read(__g_http_server.client.cfd, buf, sizeof(buf));
+        nread = read(__g_http_server.client[client_idx].cfd, buf, sizeof(buf));
         if (nread <= 0)
         { //连接断开
-          if (__g_http_server.client.recv_num > 0)
+          zlog_info(__gp_zlogc, "socket %d remote close", __g_http_server.client[client_idx].cfd);
+          if (__g_http_server.client[client_idx].recv_num > 0)
           {
-            __recv_state_machine(&__g_http_server);
+            __recv_state_machine(&__g_http_server, client_idx);
           }
-          epoll_ctl(epoll_fd, EPOLL_CTL_DEL, __g_http_server.client.cfd, NULL);
-          close(__g_http_server.client.cfd);
-          __g_http_server.client.cfd = 0;
-          zlog_error(__gp_zlogc, "socket remote close");
+          epoll_ctl(epoll_fd, EPOLL_CTL_DEL, __g_http_server.client[client_idx].cfd, NULL);
+          close(__g_http_server.client[client_idx].cfd);
+          __g_http_server.client[client_idx].cfd = 0;
         }
         else
         {
-          __recv_process(&__g_http_server, buf, nread);
-          if (__g_http_server.client.close_req)
+          __recv_process(&__g_http_server, client_idx, buf, nread);
+          if (__g_http_server.client[client_idx].close_req)
           {
-            zlog_error(__gp_zlogc, "socket local close");
-            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, __g_http_server.client.cfd, NULL);
-            close(__g_http_server.client.cfd);
-            __g_http_server.client.cfd = 0;
+            zlog_info(__gp_zlogc, "socket %d local close", __g_http_server.client[client_idx].cfd);
+            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, __g_http_server.client[client_idx].cfd, NULL);
+            close(__g_http_server.client[client_idx].cfd);
+            __g_http_server.client[client_idx].cfd = 0;
           }
         }
+      }
+      else
+      {
+        zlog_error(__gp_zlogc, "epoll fd %d not found", p_ev->data.fd);
       }
     }
     break;
