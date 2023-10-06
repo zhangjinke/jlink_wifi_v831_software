@@ -5,7 +5,7 @@ include(GNUInstallDirs)
 include(v831_setup.cmake)
 
 # 工程配置
-project(jlink VERSION 1.2.0 LANGUAGES C)
+project(jlink VERSION 1.2.1 LANGUAGES C)
 message(STATUS "PROJECT_VERSION=${PROJECT_VERSION}")
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
@@ -59,8 +59,10 @@ set(JLINK_SRC_FILES_C
     application/source/key.c
     application/source/led.c
     application/source/main.c
+    application/source/udp_ctl.c
     application/source/web.c
     application/source/wifi_ctl.c
+    utilities/source/c2000.c
     utilities/source/crc.c
     utilities/source/file.c
     utilities/source/filter.c

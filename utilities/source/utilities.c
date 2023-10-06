@@ -5,6 +5,7 @@
  * \internal
  * \par Modification history
  * - 1.00 22-02-18  zjk, first implementation
+ * - 1.03 23-10-05  zjk, 增加 if_ip_get()
  * \endinternal
  */
 
@@ -12,7 +13,7 @@
 #include <errno.h>
 #include <ifaddrs.h>
 #include <net/if.h>
-#include <net/if.h>
+#include <netinet/in.h>
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
@@ -188,6 +189,47 @@ int if_mac_get (const char *p_if_name, void *p_mac)
   }
 
   memcpy(p_mac, ifr.ifr_hwaddr.sa_data, 6);
+
+err_close_sock:
+  close(sock);
+err:
+  return err;
+}
+
+/**
+ * \brief 网卡 IP 地址获取
+ */
+int if_ip_get (const char *p_if_name, void *p_ip)
+{
+  int                 sock  = 0;
+  struct ifreq        ifr   = {0};
+  struct sockaddr_in *p_sin = NULL;
+  int                 err   = 0;
+
+  if ((NULL == p_if_name) || (NULL == p_ip))
+  {
+    zlog_error(gp_utilities_zlogc, "param error");
+    goto err;
+  }
+
+  sock = socket(AF_INET, SOCK_DGRAM, 0);
+  if (-1 == sock)
+  {
+    zlog_error(gp_utilities_zlogc, "create socket error: %s", strerror(errno));
+    err = -1;
+    goto err;
+  }
+
+  strcpy(ifr.ifr_name, p_if_name);
+  if (ioctl(sock, SIOCGIFADDR, &ifr) < 0)
+  {
+    zlog_error(gp_utilities_zlogc, "ioctl SIOCGIFADDR %s error: %s", p_if_name, strerror(errno));
+    err = -1;
+    goto err_close_sock;
+  }
+
+  p_sin = (struct sockaddr_in *)&ifr.ifr_addr;
+  memcpy(p_ip, &p_sin->sin_addr.s_addr, 4);
 
 err_close_sock:
   close(sock);

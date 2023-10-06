@@ -7,6 +7,7 @@
  * - 1.00 20-04-14  zjk, first implementation
  * - 1.01 21-09-22  zjk, 添加 ARRAY_SIZE、MEMBER_SIZE、OFFSETOF
  * - 1.02 22-02-18  zjk, 添加位操作支持
+ * - 1.03 23-10-05  zjk, 增加 if_ip_get()
  * \endinternal
  */
 
@@ -194,6 +195,17 @@ int if_link_stats_get (const char *p_if_name, struct rtnl_link_stats *p_stats);
  * \retval -1 失败
  */
 int if_mac_get (const char *p_if_name, void *p_mac);
+
+/**
+ * \brief 网卡 IP 地址获取
+ *
+ * \param[in]  p_if_name 网卡名称
+ * \param[out] p_ip      指向存储获取到的网卡 IP 地址的缓冲区的指针，长度必须大于等于 4
+ *
+ * \retval  0 成功
+ * \retval -1 失败
+ */
+int if_ip_get (const char *p_if_name, void *p_ip);
 
 /**
  * \brief epoll_timer 初始化

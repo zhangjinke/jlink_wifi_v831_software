@@ -16,6 +16,7 @@
 #include "jlink_ctl.h"
 #include "key.h"
 #include "led.h"
+#include "udp_ctl.h"
 #include "libconfig.h"
 #include "process.h"
 #include "rngbuf.h"
@@ -266,6 +267,7 @@ static void __process (void)
       {
         zlog_info(__gp_zlogc, "usb state");
         s_state_init = true;
+        led_trigger_set(LED_STATE, LED_TRIGGER_TIMER);
         led_timer_set(LED_STATE, 0, 1);
         jlink_ctl_run_set(false);
         cfg_int_set("wifi", "mode", WIFI_MODE_DISABLE);
@@ -289,6 +291,7 @@ static void __process (void)
       {
         zlog_info(__gp_zlogc, "sta state");
         s_state_init = true;
+        led_trigger_set(LED_STATE, LED_TRIGGER_TIMER);
         led_timer_set(LED_STATE, 50, 2500);
         jlink_ctl_run_set(true);
         cfg_int_set("wifi", "mode", WIFI_MODE_STA);
@@ -341,7 +344,7 @@ static void __process (void)
       {
         zlog_info(__gp_zlogc, "ap state");
         s_state_init = true;
-        led_timer_set(LED_STATE, 50, 1000);
+        led_trigger_set(LED_STATE, LED_TRIGGER_HEARTBEAT);
         jlink_ctl_run_set(true);
         cfg_int_set("wifi", "mode", WIFI_MODE_AP);
         wifi_ctl_cfg_update();
@@ -366,6 +369,7 @@ static void __process (void)
       {
         zlog_info(__gp_zlogc, "wait state");
         s_state_init = true;
+        led_trigger_set(LED_STATE, LED_TRIGGER_TIMER);
         led_timer_set(LED_STATE, 100, 100);
         s_state_tick = systick;
       }
@@ -491,7 +495,7 @@ int main (int argc, char *argv[])
   }
 
   //初始化屏障初始化，注意线程数量需正确配置
-  if (pthread_barrier_init(&__g_init_barrier, NULL, 4) != 0)
+  if (pthread_barrier_init(&__g_init_barrier, NULL, 5) != 0)
   {
     zlog_fatal(__gp_zlogc, "pthread barrier init error");
     err = -1;
@@ -517,6 +521,13 @@ int main (int argc, char *argv[])
   {
     err = -1;
     goto err_jlink_ctl_deinit;
+  }
+
+  //udp ctl_初始化
+  if (udp_ctl_init() != 0)
+  {
+    err = -1;
+    goto err_web_deinit;
   }
 
   //指示灯
@@ -571,6 +582,8 @@ int main (int argc, char *argv[])
     }
   }
 
+  udp_ctl_deinit();
+err_web_deinit:
   web_deinit();
 err_jlink_ctl_deinit:
   jlink_ctl_deinit();

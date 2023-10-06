@@ -247,7 +247,7 @@ static int __sta_init (const char *p_ctl_path, const char *p_ssid, const char *p
   len = sizeof(reply) - 1;
   cmd_len = snprintf(cmd, sizeof(cmd), "LIST_NETWORKS");
   wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-  len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+  // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
   reply[len] = '\0';
   zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
   p_str = strstr(reply, "\n");
@@ -267,7 +267,7 @@ static int __sta_init (const char *p_ctl_path, const char *p_ssid, const char *p
       len = sizeof(reply) - 1;
       cmd_len = snprintf(cmd, sizeof(cmd), "REMOVE_NETWORK %d", i);
       wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-      len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+      // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
       reply[len] = '\0';
       zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
 
@@ -285,7 +285,7 @@ static int __sta_init (const char *p_ctl_path, const char *p_ssid, const char *p
   len = sizeof(reply) - 1;
   cmd_len = snprintf(cmd, sizeof(cmd), "ADD_NETWORK");
   wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-  len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+  // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
   reply[len] = '\0';
   zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
   if ((reply[0] >= '0') && (reply[0] <= '9'))
@@ -296,7 +296,7 @@ static int __sta_init (const char *p_ctl_path, const char *p_ssid, const char *p
     len = sizeof(reply) - 1;
     cmd_len = snprintf(cmd, sizeof(cmd), "SET_NETWORK %d ssid \"%s\"", i, p_ssid);
     wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-    len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+    // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
     reply[len] = '\0';
     zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
 
@@ -306,7 +306,7 @@ static int __sta_init (const char *p_ctl_path, const char *p_ssid, const char *p
       len = sizeof(reply) - 1;
       cmd_len = snprintf(cmd, sizeof(cmd), "SET_NETWORK %d psk \"%s\"", i, p_password);
       wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-      len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+      // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
       reply[len] = '\0';
       zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
     }
@@ -315,7 +315,7 @@ static int __sta_init (const char *p_ctl_path, const char *p_ssid, const char *p
       len = sizeof(reply) - 1;
       cmd_len = snprintf(cmd, sizeof(cmd), "SET_NETWORK %d key_mgmt NONE", i);
       wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-      len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+      // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
       reply[len] = '\0';
       zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
     }
@@ -325,7 +325,7 @@ static int __sta_init (const char *p_ctl_path, const char *p_ssid, const char *p
       len = sizeof(reply) - 1;
       cmd_len = snprintf(cmd, sizeof(cmd), "SET_NETWORK %d scan_ssid 1", i);
       wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-      len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+      // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
       reply[len] = '\0';
       zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
     }
@@ -333,14 +333,14 @@ static int __sta_init (const char *p_ctl_path, const char *p_ssid, const char *p
     len = sizeof(reply) - 1;
     cmd_len = snprintf(cmd, sizeof(cmd), "ENABLE_NETWORK %d", i);
     wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-    len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+    // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
     reply[len] = '\0';
     zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
 
     len = sizeof(reply) - 1;
     cmd_len = snprintf(cmd, sizeof(cmd), "RECONNECT");
     wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-    len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+    // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
     reply[len] = '\0';
     zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
   }
@@ -382,7 +382,7 @@ static int __sta_deinit (const char *p_ctl_path)
   len = sizeof(reply) - 1;
   cmd_len = snprintf(cmd, sizeof(cmd), "DISCONNECT");
   wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-  len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+  // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
   reply[len] = '\0';
   zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
 
@@ -424,7 +424,7 @@ static int __ap_init (const char *p_ctl_path, const char *p_ssid, const char *p_
   cmd_len = snprintf(cmd, sizeof(cmd), "DISABLE");
   if (wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL) == 0)
   {
-    len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+    // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
     reply[len] = '\0';
     zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
   }
@@ -433,7 +433,7 @@ static int __ap_init (const char *p_ctl_path, const char *p_ssid, const char *p_
   len = sizeof(reply) - 1;
   cmd_len = snprintf(cmd, sizeof(cmd), "SET ssid %s", p_ssid);
   wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-  len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+  // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
   reply[len] = '\0';
   zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
 
@@ -443,7 +443,7 @@ static int __ap_init (const char *p_ctl_path, const char *p_ssid, const char *p_
     len = sizeof(reply) - 1;
     cmd_len = snprintf(cmd, sizeof(cmd), "SET wpa_passphrase %s", p_password);
     wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-    len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+    // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
     reply[len] = '\0';
     zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
   }
@@ -456,7 +456,7 @@ static int __ap_init (const char *p_ctl_path, const char *p_ssid, const char *p_
   len = sizeof(reply) - 1;
   cmd_len = snprintf(cmd, sizeof(cmd), "SET ignore_broadcast_ssid %d", is_hide);
   wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-  len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+  // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
   reply[len] = '\0';
   zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
 
@@ -464,7 +464,7 @@ static int __ap_init (const char *p_ctl_path, const char *p_ssid, const char *p_
   len = sizeof(reply) - 1;
   cmd_len = snprintf(cmd, sizeof(cmd), "ENABLE");
   wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-  len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+  // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
   reply[len] = '\0';
   zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
 
@@ -506,7 +506,7 @@ static int __ap_deinit (const char *p_ctl_path)
   cmd_len = snprintf(cmd, sizeof(cmd), "DISABLE");
   if (wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL) == 0)
   {
-    len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+    // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
     reply[len] = '\0';
     zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
   }
@@ -546,7 +546,7 @@ static int __sta_status_get (void)
   len = sizeof(reply) - 1;
   cmd_len = snprintf(cmd, sizeof(cmd), "STATUS");
   wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-  len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+  // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
   reply[len] = '\0';
   // zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
   p_str = reply;
@@ -606,7 +606,7 @@ static int __sta_signal_get (void)
   len = sizeof(reply) - 1;
   cmd_len = snprintf(cmd, sizeof(cmd), "SIGNAL_POLL");
   wpa_ctrl_request(p_wpa_ctrl, cmd, cmd_len, reply, &len, NULL);
-  len = ((len >= 2) && ('\r' == reply[len - 2]) && ('\n' == reply[len - 2])) ? len - 2 : len;
+  // len = ((len >= 1) && ('\n' == reply[len - 1])) ? len - 1 : len;
   reply[len] = '\0';
   // zlog_debug(__gp_zlogc, "%s reply: %s", cmd, reply);
   p_str = reply;
@@ -698,7 +698,7 @@ static void *__wifi_ctl_thread (void *p_arg)
     goto err;
   }
 
-  wifi_ctl_cfg_update();
+  // wifi_ctl_cfg_update();
 
   while (__g_thread_run)
   {
